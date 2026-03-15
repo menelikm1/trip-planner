@@ -271,15 +271,17 @@ app.delete('/api/trip/:id/activities/:actId', async (req, res) => {
   }
 });
 
-// React to an activity (no PIN — open to group)
+// React to an activity (no PIN — open to group; action: 'add'|'remove')
 app.post('/api/trip/:id/activities/:actId/react', async (req, res) => {
   try {
-    const { emoji } = req.body;
+    const { emoji, action } = req.body;
     const cols = { fire: 'react_fire', eyes: 'react_eyes', heart: 'react_heart' };
     if (!cols[emoji]) return res.status(400).json({ error: 'Invalid emoji' });
+    const delta = action === 'remove' ? -1 : 1;
+    const col = cols[emoji];
     const { rows } = await pool.query(
-      `UPDATE activities SET ${cols[emoji]} = ${cols[emoji]} + 1 WHERE id = $1 AND trip_id = $2 RETURNING *`,
-      [req.params.actId, req.params.id]
+      `UPDATE activities SET ${col} = GREATEST(${col} + $1, 0) WHERE id = $2 AND trip_id = $3 RETURNING *`,
+      [delta, req.params.actId, req.params.id]
     );
     res.json(rows[0]);
   } catch (err) {

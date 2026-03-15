@@ -981,13 +981,18 @@
   }
 
   async function reactToActivity(actId, emoji) {
-    if (getMyReactions(actId).includes(emoji)) return; // already reacted
+    const myReactions = getMyReactions(actId);
+    const alreadyReacted = myReactions.includes(emoji);
+    const action = alreadyReacted ? 'remove' : 'add';
     try {
-      await api('POST', '/trip/'+tripId+'/activities/'+actId+'/react', { emoji });
-      saveMyReaction(actId, emoji);
+      await api('POST', '/trip/'+tripId+'/activities/'+actId+'/react', { emoji, action });
+      if (alreadyReacted) {
+        localStorage.setItem('reactions_'+tripId+'_'+actId, JSON.stringify(myReactions.filter(r => r !== emoji)));
+      } else {
+        saveMyReaction(actId, emoji);
+      }
       tripData = await api('GET', '/trip/'+tripId);
       renderItinerary();
-      // Refresh detail modal if open
       if (document.getElementById('activity-detail-modal').classList.contains('show')) {
         openActivityDetail(actId);
       }
