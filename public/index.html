@@ -148,6 +148,11 @@
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 14px; z-index: 300; display: none; }
   .toast.show { display: block; }
 
+  /* QUICK ACTIONS */
+  .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .btn-quick { padding: 9px 16px; border-radius: 20px; border: 0.5px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+  .btn-quick:hover { background: var(--surface2); }
+
   /* COUNTDOWN */
   .countdown-card { background: linear-gradient(135deg, var(--accent-bg), #fdf3ee); border-radius: 14px; border: 0.5px solid rgba(201,94,43,0.2); padding: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
   .countdown-num { font-size: 40px; font-family: 'DM Serif Display', serif; color: var(--accent); line-height: 1; }
@@ -270,6 +275,15 @@
   <!-- OVERVIEW -->
   <div id="overview-tab" class="tab-content active">
     <div id="ov-countdown"></div>
+    <div id="quick-actions-wrap" style="display:none">
+      <p class="section-label">Quick add</p>
+      <div class="quick-actions">
+        <button class="btn-quick" onclick="openActivityModal(getDays()[0])">+ Activity</button>
+        <button class="btn-quick" onclick="openModal('stay-modal')">+ Accommodation</button>
+        <button class="btn-quick" onclick="openModal('vote-modal')">+ Vote option</button>
+        <button class="btn-quick" onclick="openExpenseModal()">+ Expense</button>
+      </div>
+    </div>
     <p class="section-label">Trip details</p>
     <div class="info-card">
       <div class="info-row">
@@ -584,6 +598,7 @@
     document.getElementById('ov-dates').textContent = formatDateShort(tripData.start) + ' – ' + formatDateShort(tripData.end);
     const dur = Math.round((new Date(toDateStr(tripData.end) + 'T00:00:00') - new Date(toDateStr(tripData.start) + 'T00:00:00')) / 86400000) + 1;
     document.getElementById('ov-duration').textContent = dur + ' day' + (dur !== 1 ? 's' : '');
+    document.getElementById('quick-actions-wrap').style.display = isPlanner ? '' : 'none';
     document.getElementById('add-stay-wrap').style.display = isPlanner ? '' : 'none';
     document.getElementById('add-vote-wrap').style.display = isPlanner ? '' : 'none';
     document.getElementById('viewer-note-itin').style.display = isPlanner ? 'none' : 'block';
