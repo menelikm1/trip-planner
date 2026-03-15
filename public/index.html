@@ -148,6 +148,27 @@
   .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 14px; z-index: 300; display: none; }
   .toast.show { display: block; }
 
+  /* CONTINUE BANNER */
+  .continue-banner { background: var(--surface); border-radius: 14px; border: 0.5px solid var(--border); padding: 1rem 1.25rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .continue-banner-text { font-size: 13px; color: var(--text2); }
+  .continue-banner-text strong { display: block; font-size: 15px; color: var(--text); margin-bottom: 2px; }
+  .btn-continue { padding: 8px 16px; border-radius: 8px; background: var(--text); color: #fff; border: none; font-size: 13px; font-family: inherit; cursor: pointer; white-space: nowrap; }
+
+  /* REACTIONS */
+  .reaction-row { display: flex; gap: 6px; margin-top: 8px; }
+  .react-btn { display: flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 20px; border: 0.5px solid var(--border); background: var(--surface2); font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.15s; }
+  .react-btn:hover { background: var(--surface); border-color: var(--border-strong); }
+  .react-btn.reacted { background: var(--accent-bg); border-color: transparent; }
+  .react-count { font-size: 12px; color: var(--text2); }
+
+  /* ACTIVITY DETAIL MODAL */
+  .detail-type-badge { display: inline-block; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 20px; margin-bottom: 1rem; }
+  .detail-field { margin-bottom: 12px; }
+  .detail-field .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 3px; }
+  .detail-field .val { font-size: 15px; color: var(--text); }
+  .detail-field a { color: var(--blue); text-decoration: none; word-break: break-all; }
+  .detail-field a:hover { text-decoration: underline; }
+
   /* QUICK ACTIONS */
   .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
   .btn-quick { padding: 9px 16px; border-radius: 20px; border: 0.5px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 13px; font-family: inherit; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
@@ -206,6 +227,13 @@
 <!-- SETUP SCREEN -->
 <div id="setup-screen" class="screen active">
   <div class="setup-card">
+    <div id="continue-banner" style="display:none" class="continue-banner">
+      <div class="continue-banner-text">
+        <strong id="continue-trip-name"></strong>
+        You have a trip in progress
+      </div>
+      <button class="btn-continue" onclick="continuePreviousTrip()">Continue</button>
+    </div>
     <h1 class="serif">Plan your trip ✈</h1>
     <p class="subtitle">Create a shared trip planner for your group.</p>
     <div class="form-group">
@@ -262,6 +290,7 @@
     <div class="header-actions">
       <span class="mode-badge" id="mode-badge">Planner</span>
       <button class="btn-icon" onclick="showTab('share-tab')">Share</button>
+      <button class="btn-icon" onclick="leaveTrip()">← Home</button>
     </div>
   </div>
   <div class="nav-tabs">
@@ -352,7 +381,7 @@
 <!-- ACTIVITY MODAL -->
 <div class="modal-overlay" id="activity-modal">
   <div class="modal">
-    <h2>Add to itinerary</h2>
+    <h2 id="activity-modal-title">Add to itinerary</h2>
     <div class="form-group"><label>Day</label><select id="act-day"></select></div>
     <div class="form-group"><label>Name</label><input type="text" id="act-name" placeholder="e.g. Dinner at Le Jules Verne" /></div>
     <div class="form-group"><label>Type</label>
@@ -365,10 +394,28 @@
       </select>
     </div>
     <div class="form-group"><label>Time (optional)</label><input type="time" id="act-time" /></div>
-    <div class="form-group"><label>Notes (optional)</label><textarea id="act-note" placeholder="Reservation details, address, tips..."></textarea></div>
+    <div class="form-group"><label>Price (optional)</label><input type="number" id="act-price" placeholder="0.00" min="0" step="0.01" /></div>
+    <div class="form-group"><label>Notes / link (optional)</label><textarea id="act-note" placeholder="Reservation details, address, or paste a URL..."></textarea></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('activity-modal')">Cancel</button>
       <button class="btn-save" id="save-act-btn" onclick="saveActivity()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVITY DETAIL MODAL -->
+<div class="modal-overlay" id="activity-detail-modal">
+  <div class="modal">
+    <div id="detail-type-badge" class="detail-type-badge"></div>
+    <h2 id="detail-name" style="margin-bottom:1rem"></h2>
+    <div id="detail-fields"></div>
+    <div id="detail-reactions" class="reaction-row" style="margin-bottom:1rem"></div>
+    <div id="detail-planner-actions" class="modal-actions" style="display:none;justify-content:flex-start;margin-top:0">
+      <button class="btn-save" id="detail-edit-btn">Edit</button>
+      <button class="btn-cancel" id="detail-delete-btn" style="color:var(--accent)">Delete</button>
+    </div>
+    <div class="modal-actions" style="margin-top:1rem">
+      <button class="btn-cancel" onclick="closeModal('activity-detail-modal')">Close</button>
     </div>
   </div>
 </div>
@@ -408,6 +455,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- SAVE LINK MODAL -->
 <div class="modal-overlay" id="save-link-modal">
@@ -466,6 +514,8 @@
   let tripId = null;
   let isPlanner = false;
   let plannerPin = null;
+  let editingActivityId = null;
+  let editingStayId = null;
 
   // ── Helpers ────────────────────────────────────────────────────────────────
   function showScreen(id) {
@@ -585,6 +635,24 @@
 
   function continueAsViewer() { isPlanner = false; launchApp(); }
 
+  async function attemptPinUpgrade() {
+    const pin = document.getElementById('header-pin-input').value.trim();
+    const err = document.getElementById('header-pin-error');
+    try {
+      const { isPlanner: valid } = await api('POST', '/trip/'+tripId+'/verify', { pin });
+      if (valid) {
+        isPlanner = true;
+        plannerPin = pin;
+        err.classList.remove('show');
+        closeModal('enter-pin-modal');
+        document.getElementById('header-pin-input').value = '';
+        renderApp();
+      } else {
+        err.classList.add('show');
+      }
+    } catch(e) { err.classList.add('show'); }
+  }
+
   async function fetchAndLaunch() {
     tripData = await api('GET', '/trip/' + tripId);
     launchApp();
@@ -640,7 +708,11 @@
           ${s.address ? `<span>${s.address}</span>` : ''}
         </div>
         ${s.confirmation ? `<div class="stay-conf">Confirmation: ${s.confirmation}</div>` : ''}
-        ${isPlanner ? `<button class="delete-btn" style="position:absolute;top:12px;right:12px" onclick="deleteStay('${s.id}')">×</button>` : ''}
+        ${isPlanner ? `
+          <div style="position:absolute;top:12px;right:12px;display:flex;gap:6px">
+            <button class="btn-icon" style="font-size:12px;padding:4px 10px" onclick="editStay('${s.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteStay('${s.id}')">×</button>
+          </div>` : ''}
       </div>`).join('');
   }
 
@@ -653,16 +725,30 @@
         .sort((a,b) => (a.time||'99:99').localeCompare(b.time||'99:99'));
       const actHtml = !acts.length
         ? `<p style="font-size:13px;color:var(--text3);padding:6px 0">Nothing planned yet.</p>`
-        : acts.map(a => `
-          <div class="activity-item">
+        : acts.map(a => {
+          const myReactions = getMyReactions(a.id);
+          const reactions = [
+            { key: 'fire', emoji: '🔥', count: a.react_fire||0 },
+            { key: 'eyes', emoji: '👀', count: a.react_eyes||0 },
+            { key: 'heart', emoji: '😍', count: a.react_heart||0 },
+          ];
+          return `
+          <div class="activity-item" style="cursor:pointer" onclick="openActivityDetail('${a.id}')">
             <div class="activity-type-dot type-${a.type}"></div>
             <div class="activity-time">${a.time || '—'}</div>
             <div class="activity-body">
               <div class="activity-name">${a.name}</div>
-              ${a.note ? `<div class="activity-note">${a.note}</div>` : ''}
+              ${a.price ? `<div class="activity-note">$${parseFloat(a.price).toFixed(2)}</div>` : ''}
+              <div class="reaction-row" onclick="event.stopPropagation()">
+                ${reactions.map(r => `
+                  <button class="react-btn ${myReactions.includes(r.key)?'reacted':''}" onclick="reactToActivity('${a.id}','${r.key}')">
+                    ${r.emoji}${r.count > 0 ? `<span class="react-count">${r.count}</span>` : ''}
+                  </button>`).join('')}
+              </div>
             </div>
-            ${isPlanner ? `<button class="delete-btn" onclick="deleteActivity('${a.id}')">×</button>` : ''}
-          </div>`).join('');
+            ${isPlanner ? `<button class="delete-btn" onclick="event.stopPropagation();deleteActivity('${a.id}')">×</button>` : ''}
+          </div>`;
+        }).join('');
       return `
         <div class="day-block">
           <div class="day-header">
@@ -742,10 +828,33 @@
 
   // ── Activity modal ─────────────────────────────────────────────────────────
   function openActivityModal(day) {
+    editingActivityId = null;
     const days = getDays();
     const sel = document.getElementById('act-day');
     sel.innerHTML = days.map(d => `<option value="${d}" ${d===day?'selected':''}>${formatDate(d)}</option>`).join('');
-    ['act-name','act-time','act-note'].forEach(id => document.getElementById(id).value = '');
+    ['act-name','act-time','act-note','act-price'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('act-type').value = 'food';
+    document.getElementById('activity-modal-title').textContent = 'Add to itinerary';
+    document.getElementById('save-act-btn').textContent = 'Add';
+    openModal('activity-modal');
+  }
+
+  function editActivity(id) {
+    const a = (tripData.activities||[]).find(a => a.id === id);
+    if (!a) return;
+    editingActivityId = id;
+    closeModal('activity-detail-modal');
+    const days = getDays();
+    const sel = document.getElementById('act-day');
+    const day = toDateStr(a.day);
+    sel.innerHTML = days.map(d => `<option value="${d}" ${d===day?'selected':''}>${formatDate(d)}</option>`).join('');
+    document.getElementById('act-name').value = a.name || '';
+    document.getElementById('act-type').value = a.type || 'other';
+    document.getElementById('act-time').value = a.time || '';
+    document.getElementById('act-price').value = a.price || '';
+    document.getElementById('act-note').value = a.note || '';
+    document.getElementById('activity-modal-title').textContent = 'Edit activity';
+    document.getElementById('save-act-btn').textContent = 'Save';
     openModal('activity-modal');
   }
 
@@ -754,49 +863,80 @@
     if (!name) { showToast('Please enter a name.'); return; }
     const btn = document.getElementById('save-act-btn');
     btn.disabled = true; btn.textContent = 'Saving...';
+    const payload = {
+      pin: plannerPin,
+      day: document.getElementById('act-day').value,
+      name,
+      type: document.getElementById('act-type').value,
+      time: document.getElementById('act-time').value,
+      price: document.getElementById('act-price').value || null,
+      note: document.getElementById('act-note').value.trim()
+    };
     try {
-      await api('POST', '/trip/'+tripId+'/activities', {
-        pin: plannerPin,
-        day: document.getElementById('act-day').value,
-        name,
-        type: document.getElementById('act-type').value,
-        time: document.getElementById('act-time').value,
-        note: document.getElementById('act-note').value.trim()
-      });
+      if (editingActivityId) {
+        await api('PUT', '/trip/'+tripId+'/activities/'+editingActivityId, payload);
+      } else {
+        await api('POST', '/trip/'+tripId+'/activities', payload);
+      }
       tripData = await api('GET', '/trip/'+tripId);
       closeModal('activity-modal');
       renderItinerary(); renderCounts();
     } catch(e) { showToast(e.message); }
-    btn.disabled = false; btn.textContent = 'Add';
+    btn.disabled = false;
+    btn.textContent = editingActivityId ? 'Save' : 'Add';
+    editingActivityId = null;
   }
 
   async function deleteActivity(id) {
     if (!confirm('Remove this activity?')) return;
+    closeModal('activity-detail-modal');
     await api('DELETE', '/trip/'+tripId+'/activities/'+id, { pin: plannerPin });
     tripData = await api('GET', '/trip/'+tripId);
     renderItinerary(); renderCounts();
   }
 
   // ── Stay modal ─────────────────────────────────────────────────────────────
+  function editStay(id) {
+    const s = (tripData.stays||[]).find(s => s.id === id);
+    if (!s) return;
+    editingStayId = id;
+    document.getElementById('stay-name').value = s.name || '';
+    document.getElementById('stay-checkin').value = toDateStr(s.checkin) || '';
+    document.getElementById('stay-checkout').value = toDateStr(s.checkout) || '';
+    document.getElementById('stay-address').value = s.address || '';
+    document.getElementById('stay-conf').value = s.confirmation || '';
+    document.querySelector('#stay-modal h2').textContent = 'Edit accommodation';
+    document.getElementById('save-stay-btn').textContent = 'Save';
+    openModal('stay-modal');
+  }
+
   async function saveStay() {
     const name = document.getElementById('stay-name').value.trim();
     if (!name) { showToast('Please enter the property name.'); return; }
     const btn = document.getElementById('save-stay-btn');
     btn.disabled = true; btn.textContent = 'Saving...';
+    const payload = {
+      pin: plannerPin,
+      name,
+      checkin: document.getElementById('stay-checkin').value,
+      checkout: document.getElementById('stay-checkout').value,
+      address: document.getElementById('stay-address').value.trim(),
+      confirmation: document.getElementById('stay-conf').value.trim()
+    };
     try {
-      await api('POST', '/trip/'+tripId+'/stays', {
-        pin: plannerPin,
-        name,
-        checkin: document.getElementById('stay-checkin').value,
-        checkout: document.getElementById('stay-checkout').value,
-        address: document.getElementById('stay-address').value.trim(),
-        confirmation: document.getElementById('stay-conf').value.trim()
-      });
+      if (editingStayId) {
+        await api('PUT', '/trip/'+tripId+'/stays/'+editingStayId, payload);
+      } else {
+        await api('POST', '/trip/'+tripId+'/stays', payload);
+      }
       tripData = await api('GET', '/trip/'+tripId);
       closeModal('stay-modal');
+      document.querySelector('#stay-modal h2').textContent = 'Add accommodation';
       renderStays();
     } catch(e) { showToast(e.message); }
-    btn.disabled = false; btn.textContent = 'Add';
+    btn.disabled = false;
+    btn.textContent = editingStayId ? 'Save' : 'Add';
+    editingStayId = null;
   }
 
   async function deleteStay(id) {
@@ -848,6 +988,76 @@
     await api('DELETE', '/trip/'+tripId+'/votes/'+id, { pin: plannerPin });
     tripData = await api('GET', '/trip/'+tripId);
     renderVotes(); renderCounts();
+  }
+
+  // ── Activity detail + reactions ────────────────────────────────────────────
+  function getMyReactions(actId) {
+    try { return JSON.parse(localStorage.getItem('reactions_'+tripId+'_'+actId) || '[]'); } catch { return []; }
+  }
+  function saveMyReaction(actId, emoji) {
+    const r = getMyReactions(actId);
+    if (!r.includes(emoji)) r.push(emoji);
+    localStorage.setItem('reactions_'+tripId+'_'+actId, JSON.stringify(r));
+  }
+
+  async function reactToActivity(actId, emoji) {
+    const myReactions = getMyReactions(actId);
+    const alreadyReacted = myReactions.includes(emoji);
+    const action = alreadyReacted ? 'remove' : 'add';
+    try {
+      await api('POST', '/trip/'+tripId+'/activities/'+actId+'/react', { emoji, action });
+      if (alreadyReacted) {
+        localStorage.setItem('reactions_'+tripId+'_'+actId, JSON.stringify(myReactions.filter(r => r !== emoji)));
+      } else {
+        saveMyReaction(actId, emoji);
+      }
+      tripData = await api('GET', '/trip/'+tripId);
+      renderItinerary();
+      if (document.getElementById('activity-detail-modal').classList.contains('show')) {
+        openActivityDetail(actId);
+      }
+    } catch(e) { showToast('Could not react.'); }
+  }
+
+  function openActivityDetail(id) {
+    const a = (tripData.activities||[]).find(a => a.id === id);
+    if (!a) return;
+    const typeLabels = { food:'Restaurant', activity:'Activity', transport:'Transport', hotel:'Hotel', other:'Other' };
+    const typeBg = { food:'var(--accent-bg)', activity:'var(--teal-bg)', transport:'var(--blue-bg)', hotel:'#FEF9EC', other:'var(--surface2)' };
+    const typeColor = { food:'var(--accent)', activity:'var(--teal)', transport:'var(--blue)', hotel:'var(--amber)', other:'var(--text3)' };
+    const badge = document.getElementById('detail-type-badge');
+    badge.textContent = typeLabels[a.type]||a.type;
+    badge.style.background = typeBg[a.type]||'var(--surface2)';
+    badge.style.color = typeColor[a.type]||'var(--text3)';
+    document.getElementById('detail-name').textContent = a.name;
+
+    let fields = '';
+    if (a.time) fields += `<div class="detail-field"><div class="lbl">Time</div><div class="val">${a.time}</div></div>`;
+    if (a.price) fields += `<div class="detail-field"><div class="lbl">Price</div><div class="val">$${parseFloat(a.price).toFixed(2)}</div></div>`;
+    if (a.note) {
+      const isUrl = /^https?:\/\//i.test(a.note.trim());
+      fields += `<div class="detail-field"><div class="lbl">Notes</div><div class="val">${isUrl ? `<a href="${a.note.trim()}" target="_blank" rel="noopener">${a.note.trim()}</a>` : a.note}</div></div>`;
+    }
+    document.getElementById('detail-fields').innerHTML = fields;
+
+    const myReactions = getMyReactions(a.id);
+    const reactions = [
+      { key:'fire', emoji:'🔥', count: a.react_fire||0 },
+      { key:'eyes', emoji:'👀', count: a.react_eyes||0 },
+      { key:'heart', emoji:'😍', count: a.react_heart||0 },
+    ];
+    document.getElementById('detail-reactions').innerHTML = reactions.map(r => `
+      <button class="react-btn ${myReactions.includes(r.key)?'reacted':''}" onclick="reactToActivity('${a.id}','${r.key}')">
+        ${r.emoji}${r.count > 0 ? `<span class="react-count">${r.count}</span>` : ''}
+      </button>`).join('');
+
+    const plannerActions = document.getElementById('detail-planner-actions');
+    plannerActions.style.display = isPlanner ? 'flex' : 'none';
+    if (isPlanner) {
+      document.getElementById('detail-edit-btn').onclick = () => editActivity(a.id);
+      document.getElementById('detail-delete-btn').onclick = () => deleteActivity(a.id);
+    }
+    openModal('activity-detail-modal');
   }
 
   // ── Countdown ──────────────────────────────────────────────────────────────
@@ -1012,19 +1222,33 @@
   }
 
   // ── Init: check URL for ?trip=ID ──────────────────────────────────────────
+  async function continuePreviousTrip() {
+    showScreen('unlock-screen');
+  }
+
   (async function init() {
     const params = new URLSearchParams(window.location.search);
     const urlTripId = params.get('trip');
     const savedId = localStorage.getItem('last_trip_id');
-    const id = urlTripId || savedId;
 
-    if (id && !tripId) {
-      // tripId is already set if we just created a trip in this session — skip unlock
+    if (urlTripId) {
+      // Shared link — go straight to unlock
       try {
-        tripId = id;
+        tripId = urlTripId;
         tripData = await api('GET', '/trip/'+tripId);
         document.getElementById('unlock-trip-name').textContent = tripData.name;
         showScreen('unlock-screen');
+      } catch(e) {
+        localStorage.removeItem('last_trip_id');
+      }
+    } else if (savedId) {
+      // Previous trip on this device — show banner, don't auto-redirect
+      try {
+        tripId = savedId;
+        tripData = await api('GET', '/trip/'+tripId);
+        document.getElementById('continue-trip-name').textContent = tripData.name;
+        document.getElementById('unlock-trip-name').textContent = tripData.name;
+        document.getElementById('continue-banner').style.display = 'flex';
       } catch(e) {
         localStorage.removeItem('last_trip_id');
       }

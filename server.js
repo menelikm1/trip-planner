@@ -87,6 +87,10 @@ async function initDB() {
   await pool.query(`
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS split_with TEXT[] DEFAULT '{}';
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS settled BOOLEAN DEFAULT FALSE;
+    ALTER TABLE activities ADD COLUMN IF NOT EXISTS price NUMERIC(10,2);
+    ALTER TABLE activities ADD COLUMN IF NOT EXISTS react_fire INT DEFAULT 0;
+    ALTER TABLE activities ADD COLUMN IF NOT EXISTS react_eyes INT DEFAULT 0;
+    ALTER TABLE activities ADD COLUMN IF NOT EXISTS react_heart INT DEFAULT 0;
   `);
   console.log('✅ Database tables ready');
 }
@@ -191,6 +195,23 @@ app.post('/api/trip/:id/stays', async (req, res) => {
   }
 });
 
+// Edit a stay (PIN required)
+app.put('/api/trip/:id/stays/:stayId', async (req, res) => {
+  try {
+    const { pin, name, checkin, checkout, address, confirmation } = req.body;
+    if (!await verifyPin(req.params.id, pin)) return res.status(401).json({ error: 'Invalid PIN' });
+
+    const { rows } = await pool.query(
+      'UPDATE stays SET name=$1, checkin=$2, checkout=$3, address=$4, confirmation=$5 WHERE id=$6 AND trip_id=$7 RETURNING *',
+      [name, checkin, checkout, address, confirmation, req.params.stayId, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Stay not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update stay' });
+  }
+});
+
 // Delete a stay (PIN required)
 app.delete('/api/trip/:id/stays/:stayId', async (req, res) => {
   try {
@@ -207,16 +228,33 @@ app.delete('/api/trip/:id/stays/:stayId', async (req, res) => {
 // Add an activity (PIN required)
 app.post('/api/trip/:id/activities', async (req, res) => {
   try {
-    const { pin, day, name, type, time, note } = req.body;
+    const { pin, day, name, type, time, note, price } = req.body;
     if (!await verifyPin(req.params.id, pin)) return res.status(401).json({ error: 'Invalid PIN' });
 
     const { rows } = await pool.query(
-      'INSERT INTO activities (trip_id, day, name, type, time, note) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
-      [req.params.id, day, name, type, time, note]
+      'INSERT INTO activities (trip_id, day, name, type, time, note, price) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+      [req.params.id, day, name, type, time, note, price || null]
     );
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Failed to add activity' });
+  }
+});
+
+// Edit an activity (PIN required)
+app.put('/api/trip/:id/activities/:actId', async (req, res) => {
+  try {
+    const { pin, day, name, type, time, note, price } = req.body;
+    if (!await verifyPin(req.params.id, pin)) return res.status(401).json({ error: 'Invalid PIN' });
+
+    const { rows } = await pool.query(
+      'UPDATE activities SET day=$1, name=$2, type=$3, time=$4, note=$5, price=$6 WHERE id=$7 AND trip_id=$8 RETURNING *',
+      [day, name, type, time, note, price || null, req.params.actId, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Activity not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update activity' });
   }
 });
 
@@ -230,6 +268,24 @@ app.delete('/api/trip/:id/activities/:actId', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete activity' });
+  }
+});
+
+// React to an activity (no PIN — open to group; action: 'add'|'remove')
+app.post('/api/trip/:id/activities/:actId/react', async (req, res) => {
+  try {
+    const { emoji, action } = req.body;
+    const cols = { fire: 'react_fire', eyes: 'react_eyes', heart: 'react_heart' };
+    if (!cols[emoji]) return res.status(400).json({ error: 'Invalid emoji' });
+    const delta = action === 'remove' ? -1 : 1;
+    const col = cols[emoji];
+    const { rows } = await pool.query(
+      `UPDATE activities SET ${col} = GREATEST(${col} + $1, 0) WHERE id = $2 AND trip_id = $3 RETURNING *`,
+      [delta, req.params.actId, req.params.id]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to react' });
   }
 });
 
