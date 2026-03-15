@@ -289,7 +289,6 @@
     </div>
     <div class="header-actions">
       <span class="mode-badge" id="mode-badge">Planner</span>
-      <button class="btn-icon" id="enter-pin-btn" style="display:none" onclick="openModal('enter-pin-modal')">Enter PIN</button>
       <button class="btn-icon" onclick="showTab('share-tab')">Share</button>
       <button class="btn-icon" onclick="leaveTrip()">← Home</button>
     </div>
@@ -457,20 +456,6 @@
   </div>
 </div>
 
-<!-- ENTER PIN MODAL (viewer → planner upgrade) -->
-<div class="modal-overlay" id="enter-pin-modal">
-  <div class="modal">
-    <h2>Enter planner PIN</h2>
-    <div class="form-group" style="margin-top:0.5rem">
-      <input type="password" id="header-pin-input" placeholder="4-digit PIN" maxlength="4" onkeydown="if(event.key==='Enter') attemptPinUpgrade()" />
-      <p class="error-msg" id="header-pin-error">Incorrect PIN. Try again.</p>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('enter-pin-modal')">Cancel</button>
-      <button class="btn-save" onclick="attemptPinUpgrade()">Unlock</button>
-    </div>
-  </div>
-</div>
 
 <!-- SAVE LINK MODAL -->
 <div class="modal-overlay" id="save-link-modal">
@@ -695,7 +680,6 @@
     document.getElementById('ov-dates').textContent = formatDateShort(tripData.start) + ' – ' + formatDateShort(tripData.end);
     const dur = Math.round((new Date(toDateStr(tripData.end) + 'T00:00:00') - new Date(toDateStr(tripData.start) + 'T00:00:00')) / 86400000) + 1;
     document.getElementById('ov-duration').textContent = dur + ' day' + (dur !== 1 ? 's' : '');
-    document.getElementById('enter-pin-btn').style.display = isPlanner ? 'none' : '';
     document.getElementById('quick-actions-wrap').style.display = isPlanner ? '' : 'none';
     document.getElementById('add-stay-wrap').style.display = isPlanner ? '' : 'none';
     document.getElementById('add-vote-wrap').style.display = isPlanner ? '' : 'none';
