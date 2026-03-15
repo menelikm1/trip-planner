@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trip Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #FAF8F5; --surface: #FFFFFF; --surface2: #F2EFE9;
+    --border: rgba(0,0,0,0.1); --border-strong: rgba(0,0,0,0.2);
+    --text: #1A1916; --text2: #6B6860; --text3: #A09D97;
+    --accent: #C95E2B; --accent-bg: #FAECE7;
+    --teal: #0F6E56; --teal-bg: #E1F5EE;
+    --blue: #185FA5; --blue-bg: #E6F1FB;
+    --amber: #BA7517; --green: #3B6D11;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .serif { font-family: 'DM Serif Display', serif; }
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* SETUP */
+  #setup-screen { align-items: center; justify-content: center; padding: 2rem; background: linear-gradient(160deg,#FAF8F5,#F0EBE3); }
+  .setup-card { background: var(--surface); border-radius: 20px; border: 0.5px solid var(--border); padding: 2.5rem; width: 100%; max-width: 440px; }
+  .setup-card h1 { font-size: 32px; font-weight: 400; line-height: 1.2; margin-bottom: 6px; }
+  .setup-card .subtitle { font-size: 14px; color: var(--text2); margin-bottom: 2rem; }
+  .form-group { margin-bottom: 1.25rem; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 10px 14px; border: 0.5px solid var(--border-strong);
+    border-radius: 10px; font-size: 15px; font-family: inherit;
+    background: var(--bg); color: var(--text); outline: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .pin-hint { font-size: 12px; color: var(--text3); margin-top: 5px; }
+  .btn-primary { width: 100%; padding: 12px; background: var(--text); color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer; transition: opacity 0.15s; margin-top: 0.5rem; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .or-divider { text-align: center; color: var(--text3); font-size: 13px; margin: 1.25rem 0; }
+  .btn-secondary { width: 100%; padding: 11px; background: transparent; color: var(--text2); border: 0.5px solid var(--border-strong); border-radius: 10px; font-size: 14px; font-family: inherit; cursor: pointer; transition: background 0.15s; }
+  .btn-secondary:hover { background: var(--surface2); }
+
+  /* UNLOCK */
+  #unlock-screen { align-items: center; justify-content: center; padding: 2rem; background: linear-gradient(160deg,#FAF8F5,#F0EBE3); }
+  .unlock-card { background: var(--surface); border-radius: 20px; border: 0.5px solid var(--border); padding: 2rem; width: 100%; max-width: 360px; }
+  .unlock-card h2 { font-size: 22px; font-weight: 400; margin-bottom: 6px; }
+  .unlock-card p { font-size: 14px; color: var(--text2); margin-bottom: 1.5rem; }
+  .error-msg { color: var(--accent); font-size: 13px; margin-top: 6px; display: none; }
+  .error-msg.show { display: block; }
+
+  /* MAIN */
+  #main-screen { background: var(--bg); }
+  .app-header { background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .trip-title-area h1 { font-size: 20px; font-weight: 400; font-family: 'DM Serif Display', serif; }
+  .trip-title-area p { font-size: 12px; color: var(--text3); margin-top: 1px; }
+  .header-actions { display: flex; gap: 8px; align-items: center; }
+  .btn-icon { padding: 7px 14px; border-radius: 8px; border: 0.5px solid var(--border-strong); font-size: 13px; font-family: inherit; cursor: pointer; background: var(--surface); color: var(--text2); transition: background 0.15s; white-space: nowrap; }
+  .btn-icon:hover { background: var(--surface2); }
+  .mode-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 500; background: var(--teal-bg); color: var(--teal); }
+  .mode-badge.viewer { background: var(--blue-bg); color: var(--blue); }
+  .nav-tabs { display: flex; background: var(--surface); border-bottom: 0.5px solid var(--border); padding: 0 1.5rem; overflow-x: auto; }
+  .nav-tab { padding: 12px 16px; font-size: 14px; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; white-space: nowrap; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+  .nav-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-content { display: none; padding: 1.5rem; max-width: 800px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+  .section-label { font-size: 11px; font-weight: 500; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text3); margin-bottom: 12px; margin-top: 1.5rem; }
+  .section-label:first-child { margin-top: 0; }
+
+  /* CARDS */
+  .info-card { background: var(--surface); border-radius: 14px; border: 0.5px solid var(--border); padding: 1.25rem; margin-bottom: 1rem; }
+  .info-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .info-item { flex: 1; min-width: 140px; }
+  .info-item .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 4px; }
+  .info-item .val { font-size: 15px; color: var(--text); }
+  .info-item .val.big { font-size: 22px; font-family: 'DM Serif Display', serif; }
+
+  .stay-card { background: var(--surface); border-radius: 14px; border: 0.5px solid var(--border); padding: 1.25rem; margin-bottom: 10px; position: relative; }
+  .stay-card h3 { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+  .stay-meta { font-size: 13px; color: var(--text2); display: flex; gap: 12px; flex-wrap: wrap; }
+  .stay-meta span::before { content: '· '; color: var(--text3); }
+  .stay-meta span:first-child::before { content: ''; }
+  .stay-conf { font-size: 12px; color: var(--text3); margin-top: 6px; font-family: monospace; }
+
+  .day-block { margin-bottom: 1.5rem; }
+  .day-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .day-label { font-size: 13px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); }
+  .day-date { font-size: 20px; font-family: 'DM Serif Display', serif; color: var(--text); }
+  .add-activity-btn { font-size: 13px; color: var(--accent); background: none; border: none; cursor: pointer; font-family: inherit; padding: 4px 8px; border-radius: 6px; transition: background 0.15s; }
+  .add-activity-btn:hover { background: var(--accent-bg); }
+
+  .activity-item { background: var(--surface); border-radius: 12px; border: 0.5px solid var(--border); padding: 12px 14px; margin-bottom: 6px; display: flex; gap: 12px; align-items: flex-start; }
+  .activity-time { font-size: 12px; color: var(--text3); min-width: 44px; padding-top: 2px; }
+  .activity-body { flex: 1; }
+  .activity-name { font-size: 15px; font-weight: 500; }
+  .activity-note { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .activity-type-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .type-food { background: var(--accent); }
+  .type-activity { background: var(--teal); }
+  .type-transport { background: var(--blue); }
+  .type-hotel { background: var(--amber); }
+  .type-other { background: var(--text3); }
+  .delete-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; padding: 0 4px; line-height: 1; transition: color 0.15s; }
+  .delete-btn:hover { color: var(--accent); }
+
+  .vote-card { background: var(--surface); border-radius: 14px; border: 0.5px solid var(--border); padding: 1.25rem; margin-bottom: 10px; }
+  .vote-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .vote-title { font-size: 16px; font-weight: 500; }
+  .vote-category { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .vote-note { font-size: 13px; color: var(--text2); margin-bottom: 12px; }
+  .vote-bar-wrap { margin-bottom: 6px; }
+  .vote-bar-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+  .vote-bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .vote-bar-fill { height: 100%; border-radius: 3px; background: var(--teal); transition: width 0.4s; }
+  .vote-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .vote-btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; font-family: inherit; cursor: pointer; border: 0.5px solid var(--border-strong); background: var(--surface); color: var(--text2); transition: all 0.15s; }
+  .vote-btn.yes { background: var(--teal-bg); color: var(--teal); border-color: transparent; }
+  .vote-btn.no { background: var(--accent-bg); color: var(--accent); border-color: transparent; }
+  .vote-btn:hover { opacity: 0.8; }
+  .vote-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .vote-btn.picked { opacity: 1; box-shadow: 0 0 0 2px currentColor; }
+  .vote-total { font-size: 12px; color: var(--text3); margin-top: 8px; }
+
+  .share-banner { background: var(--blue-bg); border-radius: 14px; border: 0.5px solid var(--border); padding: 1.25rem; margin-bottom: 1.25rem; }
+  .share-banner h3 { font-size: 15px; font-weight: 500; color: var(--blue); }
+  .share-banner p { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .share-link-box { font-size: 12px; background: var(--surface); border: 0.5px solid var(--border); border-radius: 8px; padding: 8px 12px; font-family: monospace; color: var(--text2); word-break: break-all; margin-top: 8px; cursor: pointer; transition: background 0.15s; }
+  .share-link-box:hover { background: var(--surface2); }
+  .copied-toast { font-size: 12px; color: var(--teal); display: none; margin-top: 4px; }
+  .copied-toast.show { display: block; }
+  .viewer-note { background: var(--blue-bg); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--blue); margin-bottom: 1.25rem; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; align-items: center; justify-content: center; padding: 1.5rem; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: var(--surface); border-radius: 18px; padding: 1.75rem; width: 100%; max-width: 440px; border: 0.5px solid var(--border); max-height: 90vh; overflow-y: auto; }
+  .modal h2 { font-size: 20px; font-weight: 400; font-family: 'DM Serif Display', serif; margin-bottom: 1.25rem; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 1.5rem; justify-content: flex-end; }
+  .btn-cancel { padding: 9px 18px; border-radius: 8px; border: 0.5px solid var(--border-strong); background: none; font-family: inherit; font-size: 14px; cursor: pointer; color: var(--text2); }
+  .btn-save { padding: 9px 18px; border-radius: 8px; border: none; background: var(--text); color: #fff; font-family: inherit; font-size: 14px; cursor: pointer; }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
+  .empty-state .icon { font-size: 32px; margin-bottom: 8px; }
+
+  .toast { position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%); background: var(--text); color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 14px; z-index: 300; display: none; }
+  .toast.show { display: block; }
+
+  /* COUNTDOWN */
+  .countdown-card { background: linear-gradient(135deg, var(--accent-bg), #fdf3ee); border-radius: 14px; border: 0.5px solid rgba(201,94,43,0.2); padding: 1.25rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; }
+  .countdown-num { font-size: 40px; font-family: 'DM Serif Display', serif; color: var(--accent); line-height: 1; }
+  .countdown-label { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .countdown-dest { font-size: 13px; color: var(--text3); text-align: right; }
+
+  /* RSVP */
+  .rsvp-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .rsvp-chip { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px; font-size: 13px; border: 0.5px solid var(--border); background: var(--surface); }
+  .rsvp-chip.going { background: var(--teal-bg); border-color: transparent; color: var(--teal); }
+  .rsvp-chip.maybe { background: #FEF9EC; border-color: transparent; color: var(--amber); }
+  .rsvp-chip.cant { background: var(--surface2); border-color: transparent; color: var(--text3); }
+  .rsvp-chip .chip-del { background: none; border: none; cursor: pointer; font-size: 14px; color: inherit; opacity: 0.6; padding: 0; line-height: 1; }
+  .rsvp-chip .chip-del:hover { opacity: 1; }
+
+  /* EXPENSES */
+  .expense-summary { background: var(--surface); border-radius: 14px; border: 0.5px solid var(--border); padding: 1.25rem; margin-bottom: 1rem; }
+  .expense-summary-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .expense-stat { flex: 1; min-width: 100px; }
+  .expense-stat .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); margin-bottom: 4px; }
+  .expense-stat .val { font-size: 22px; font-family: 'DM Serif Display', serif; }
+  .balance-list { border-top: 0.5px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .balance-row { display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+  .balance-row .name { color: var(--text); }
+  .balance-amount { font-weight: 500; }
+  .balance-amount.owed { color: var(--teal); }
+  .balance-amount.owes { color: var(--accent); }
+  .balance-amount.even { color: var(--text3); }
+  .expense-item { background: var(--surface); border-radius: 12px; border: 0.5px solid var(--border); padding: 12px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .expense-item-left { flex: 1; }
+  .expense-item-desc { font-size: 15px; font-weight: 500; }
+  .expense-item-meta { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .expense-item-amount { font-size: 16px; font-family: 'DM Serif Display', serif; color: var(--text); white-space: nowrap; }
+  .expense-item.settled { opacity: 0.5; }
+  .expense-item.settled .expense-item-desc { text-decoration: line-through; }
+  .settle-btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 0.5px solid var(--border-strong); background: var(--surface); color: var(--text2); cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s; }
+  .settle-btn.settled { background: var(--teal-bg); color: var(--teal); border-color: transparent; }
+  .split-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .split-chip { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--surface2); color: var(--text2); }
+  .exp-checkbox-label { display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 3px 0; cursor: pointer; }
+
+  @media (max-width: 500px) {
+    .app-header { padding: 0.75rem 1rem; }
+    .tab-content { padding: 1rem; }
+    .setup-card { padding: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="screen active">
+  <div class="setup-card">
+    <h1 class="serif">Plan your trip ✈</h1>
+    <p class="subtitle">Create a shared trip planner for your group.</p>
+    <div class="form-group">
+      <label>Trip name</label>
+      <input type="text" id="setup-name" placeholder="e.g. Paris Birthday Weekend" />
+    </div>
+    <div class="form-group">
+      <label>Destination</label>
+      <input type="text" id="setup-dest" placeholder="e.g. Paris, France" />
+    </div>
+    <div class="form-group" style="display:flex;gap:12px">
+      <div style="flex:1"><label>Start date</label><input type="date" id="setup-start" /></div>
+      <div style="flex:1"><label>End date</label><input type="date" id="setup-end" /></div>
+    </div>
+    <div class="form-group">
+      <label>Planner PIN</label>
+      <input type="password" id="setup-pin" placeholder="Create a 4-digit PIN" maxlength="4" />
+      <p class="pin-hint">Only you need this to edit. The group views without a PIN.</p>
+    </div>
+    <button class="btn-primary" id="create-btn" onclick="createTrip()">Create trip planner</button>
+    <div class="or-divider">— or —</div>
+    <div class="form-group" style="margin-bottom:0">
+      <label>Open existing trip by ID</label>
+      <input type="text" id="load-id" placeholder="Paste your trip ID here" />
+    </div>
+    <button class="btn-secondary" style="margin-top:10px" onclick="loadTrip()">Open trip</button>
+  </div>
+</div>
+
+<!-- UNLOCK SCREEN -->
+<div id="unlock-screen" class="screen">
+  <div class="unlock-card">
+    <h2 class="serif">Welcome!</h2>
+    <p id="unlock-trip-name" style="font-weight:500;font-size:16px;color:var(--text);margin-bottom:4px"></p>
+    <p>Enter your planner PIN to make edits, or continue as a viewer.</p>
+    <div class="form-group" style="margin-top:1rem">
+      <input type="password" id="unlock-pin" placeholder="4-digit PIN" maxlength="4" onkeydown="if(event.key==='Enter') attemptUnlock()" />
+      <p class="error-msg" id="unlock-error">Incorrect PIN. Try again.</p>
+    </div>
+    <button class="btn-primary" onclick="attemptUnlock()">Unlock as planner</button>
+    <div style="margin-top:10px">
+      <button class="btn-secondary" onclick="continueAsViewer()">Continue as viewer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="main-screen" class="screen">
+  <div class="app-header">
+    <div class="trip-title-area">
+      <h1 id="header-title">Trip Planner</h1>
+      <p id="header-sub"></p>
+    </div>
+    <div class="header-actions">
+      <span class="mode-badge" id="mode-badge">Planner</span>
+      <button class="btn-icon" onclick="showTab('share-tab')">Share</button>
+    </div>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab('overview-tab')">Overview</button>
+    <button class="nav-tab" onclick="showTab('itinerary-tab')">Itinerary</button>
+    <button class="nav-tab" onclick="showTab('votes-tab')">Votes</button>
+    <button class="nav-tab" onclick="showTab('expenses-tab')">Expenses</button>
+    <button class="nav-tab" onclick="showTab('share-tab')">Share</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div id="overview-tab" class="tab-content active">
+    <div id="ov-countdown"></div>
+    <p class="section-label">Trip details</p>
+    <div class="info-card">
+      <div class="info-row">
+        <div class="info-item"><div class="lbl">Destination</div><div class="val big" id="ov-dest"></div></div>
+        <div class="info-item"><div class="lbl">Dates</div><div class="val" id="ov-dates"></div></div>
+        <div class="info-item"><div class="lbl">Duration</div><div class="val" id="ov-duration"></div></div>
+      </div>
+    </div>
+    <p class="section-label" style="margin-top:1.25rem">Stays & accommodations</p>
+    <div id="stays-list"></div>
+    <div id="add-stay-wrap"><button class="add-activity-btn" style="padding:0;margin-bottom:1rem" onclick="openModal('stay-modal')">+ Add accommodation</button></div>
+    <p class="section-label" style="margin-top:1.25rem">Who's coming</p>
+    <div id="rsvp-list"></div>
+    <button class="add-activity-btn" id="rsvp-join-btn" style="padding:0;margin-bottom:1rem" onclick="openModal('rsvp-modal')">+ Add yourself</button>
+    <p class="section-label" style="margin-top:1.25rem">Summary</p>
+    <div class="info-card">
+      <div class="info-row">
+        <div class="info-item"><div class="lbl">Activities</div><div class="val big" id="ov-count-act">0</div></div>
+        <div class="info-item"><div class="lbl">Restaurants</div><div class="val big" id="ov-count-food">0</div></div>
+        <div class="info-item"><div class="lbl">Going</div><div class="val big" id="ov-count-going">0</div></div>
+        <div class="info-item"><div class="lbl">Open votes</div><div class="val big" id="ov-count-votes">0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ITINERARY -->
+  <div id="itinerary-tab" class="tab-content">
+    <div id="viewer-note-itin" class="viewer-note" style="display:none">You're viewing as a guest. Only the planner can add or remove items.</div>
+    <div id="days-container"></div>
+  </div>
+
+  <!-- VOTES -->
+  <div id="votes-tab" class="tab-content">
+    <div id="viewer-note-votes" class="viewer-note" style="display:none">Voting is open — tap to cast your vote!</div>
+    <div id="add-vote-wrap"><button class="add-activity-btn" style="padding:0;margin-bottom:1.25rem" onclick="openModal('vote-modal')">+ Add vote option</button></div>
+    <div id="votes-list"></div>
+  </div>
+
+  <!-- EXPENSES -->
+  <div id="expenses-tab" class="tab-content">
+    <div id="expenses-summary"></div>
+    <p class="section-label">All expenses</p>
+    <button class="add-activity-btn" style="padding:0;margin-bottom:1.25rem" onclick="openExpenseModal()">+ Log an expense</button>
+    <div id="expenses-list"></div>
+  </div>
+
+  <!-- SHARE -->
+  <div id="share-tab" class="tab-content">
+    <div class="share-banner">
+      <h3>Share with your group</h3>
+      <p>Anyone with this link can view the itinerary and vote. Only the PIN holder can edit.</p>
+      <div class="share-link-box" id="share-link-display" onclick="copyLink()">Loading...</div>
+      <div class="copied-toast" id="copied-toast">Link copied!</div>
+    </div>
+    <div class="info-card">
+      <p style="font-size:13px;font-weight:500;margin-bottom:6px">Your trip ID</p>
+      <p style="font-size:12px;font-family:monospace;color:var(--text2);word-break:break-all" id="trip-id-display"></p>
+      <p style="font-size:12px;color:var(--text3);margin-top:6px">Save this — you'll need it to reopen the planner from another device.</p>
+    </div>
+    <div style="margin-top:1rem">
+      <button class="btn-secondary" onclick="leaveTrip()" style="width:auto;padding:9px 18px;font-size:13px">Leave / switch trip</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVITY MODAL -->
+<div class="modal-overlay" id="activity-modal">
+  <div class="modal">
+    <h2>Add to itinerary</h2>
+    <div class="form-group"><label>Day</label><select id="act-day"></select></div>
+    <div class="form-group"><label>Name</label><input type="text" id="act-name" placeholder="e.g. Dinner at Le Jules Verne" /></div>
+    <div class="form-group"><label>Type</label>
+      <select id="act-type">
+        <option value="food">Restaurant / food</option>
+        <option value="activity">Activity / sightseeing</option>
+        <option value="transport">Transport</option>
+        <option value="hotel">Hotel / check-in</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Time (optional)</label><input type="time" id="act-time" /></div>
+    <div class="form-group"><label>Notes (optional)</label><textarea id="act-note" placeholder="Reservation details, address, tips..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('activity-modal')">Cancel</button>
+      <button class="btn-save" id="save-act-btn" onclick="saveActivity()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- STAY MODAL -->
+<div class="modal-overlay" id="stay-modal">
+  <div class="modal">
+    <h2>Add accommodation</h2>
+    <div class="form-group"><label>Hotel / property name</label><input type="text" id="stay-name" placeholder="e.g. Hôtel Plaza Athénée" /></div>
+    <div class="form-group" style="display:flex;gap:12px">
+      <div style="flex:1"><label>Check-in</label><input type="date" id="stay-checkin" /></div>
+      <div style="flex:1"><label>Check-out</label><input type="date" id="stay-checkout" /></div>
+    </div>
+    <div class="form-group"><label>Address (optional)</label><input type="text" id="stay-address" /></div>
+    <div class="form-group"><label>Confirmation number (optional)</label><input type="text" id="stay-conf" /></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('stay-modal')">Cancel</button>
+      <button class="btn-save" id="save-stay-btn" onclick="saveStay()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- VOTE MODAL -->
+<div class="modal-overlay" id="vote-modal">
+  <div class="modal">
+    <h2>Add vote option</h2>
+    <div class="form-group"><label>Title</label><input type="text" id="vote-title" placeholder="e.g. Dinner at Septime" /></div>
+    <div class="form-group"><label>Category</label>
+      <select id="vote-cat">
+        <option>Restaurant</option><option>Activity</option><option>Day trip</option><option>Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Notes (optional)</label><textarea id="vote-note" placeholder="Why this option, address, link..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('vote-modal')">Cancel</button>
+      <button class="btn-save" id="save-vote-btn" onclick="saveVote()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- RSVP MODAL -->
+<div class="modal-overlay" id="rsvp-modal">
+  <div class="modal">
+    <h2>Join the trip</h2>
+    <div class="form-group"><label>Your name</label><input type="text" id="rsvp-name" placeholder="e.g. Alex" /></div>
+    <div class="form-group"><label>Status</label>
+      <select id="rsvp-status">
+        <option value="going">Going!</option>
+        <option value="maybe">Maybe</option>
+        <option value="cant">Can't make it</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('rsvp-modal')">Cancel</button>
+      <button class="btn-save" id="save-rsvp-btn" onclick="saveRsvp()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPENSE MODAL -->
+<div class="modal-overlay" id="expense-modal">
+  <div class="modal">
+    <h2>Log an expense</h2>
+    <div class="form-group"><label>Description</label><input type="text" id="exp-desc" placeholder="e.g. Dinner at Le Jules Verne" /></div>
+    <div class="form-group"><label>Amount ($)</label><input type="number" id="exp-amount" placeholder="0.00" min="0.01" step="0.01" /></div>
+    <div class="form-group"><label>Paid by</label><input type="text" id="exp-paidby" placeholder="Your name" list="rsvp-names-list" /></div>
+    <datalist id="rsvp-names-list"></datalist>
+    <div class="form-group">
+      <label>Split with</label>
+      <div id="exp-split-container" style="display:flex;flex-direction:column;gap:6px;margin-top:4px"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('expense-modal')">Cancel</button>
+      <button class="btn-save" id="save-exp-btn" onclick="saveExpense()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let tripData = null;
+  let tripId = null;
+  let isPlanner = false;
+  let plannerPin = null;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function showTab(id) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    const tabs = ['overview-tab','itinerary-tab','votes-tab','expenses-tab','share-tab'];
+    document.querySelectorAll('.nav-tab')[tabs.indexOf(id)].classList.add('active');
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('show'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function setLoading(btnId, loading) {
+    const btn = document.getElementById(btnId);
+    if (btn) { btn.disabled = loading; btn.textContent = loading ? 'Saving...' : btn.dataset.label || btn.textContent; }
+  }
+
+  async function api(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch('/api' + path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+
+  function toDateStr(d) {
+    if (!d) return '';
+    return typeof d === 'string' ? d.split('T')[0] : d;
+  }
+  function formatDate(d) {
+    if (!d) return '';
+    return new Date(toDateStr(d) + 'T00:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+  }
+  function formatDateShort(d) {
+    if (!d) return '';
+    return new Date(toDateStr(d) + 'T00:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  }
+  function getDays() {
+    if (!tripData) return [];
+    const days = [], end = new Date(toDateStr(tripData.end) + 'T00:00:00');
+    let cur = new Date(toDateStr(tripData.start) + 'T00:00:00');
+    while (cur <= end) { days.push(cur.toISOString().split('T')[0]); cur.setDate(cur.getDate()+1); }
+    return days;
+  }
+
+  // ── Create trip ────────────────────────────────────────────────────────────
+  async function createTrip() {
+    const name = document.getElementById('setup-name').value.trim();
+    const dest = document.getElementById('setup-dest').value.trim();
+    const start = document.getElementById('setup-start').value;
+    const end = document.getElementById('setup-end').value;
+    const pin = document.getElementById('setup-pin').value.trim();
+
+    if (!name || !dest || !start || !end) { showToast('Please fill in all fields.'); return; }
+    if (pin.length < 4) { showToast('PIN must be 4 digits.'); return; }
+
+    const btn = document.getElementById('create-btn');
+    btn.disabled = true; btn.textContent = 'Creating...';
+
+    try {
+      const data = await api('POST', '/trip', { name, dest, start, end, pin });
+      tripId = data.id;
+      plannerPin = pin;
+      isPlanner = true;
+      localStorage.setItem('last_trip_id', tripId);
+      await fetchAndLaunch();
+    } catch(e) {
+      showToast(e.message);
+      btn.disabled = false; btn.textContent = 'Create trip planner';
+    }
+  }
+
+  async function loadTrip() {
+    const id = document.getElementById('load-id').value.trim();
+    if (!id) { showToast('Please paste a trip ID.'); return; }
+    tripId = id;
+    try {
+      tripData = await api('GET', '/trip/' + tripId);
+      document.getElementById('unlock-trip-name').textContent = tripData.name;
+      showScreen('unlock-screen');
+    } catch(e) {
+      showToast('Trip not found. Check the ID and try again.');
+    }
+  }
+
+  async function attemptUnlock() {
+    const pin = document.getElementById('unlock-pin').value.trim();
+    const err = document.getElementById('unlock-error');
+    try {
+      const { isPlanner: valid } = await api('POST', '/trip/' + tripId + '/verify', { pin });
+      if (valid) {
+        isPlanner = true;
+        plannerPin = pin;
+        err.classList.remove('show');
+        launchApp();
+      } else {
+        err.classList.add('show');
+      }
+    } catch(e) { err.classList.add('show'); }
+  }
+
+  function continueAsViewer() { isPlanner = false; launchApp(); }
+
+  async function fetchAndLaunch() {
+    tripData = await api('GET', '/trip/' + tripId);
+    launchApp();
+  }
+
+  function launchApp() {
+    showScreen('main-screen');
+    renderApp();
+  }
+
+  function leaveTrip() {
+    localStorage.removeItem('last_trip_id');
+    tripId = null; tripData = null; isPlanner = false; plannerPin = null;
+    location.reload();
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  function renderApp() {
+    document.getElementById('header-title').textContent = tripData.name;
+    document.getElementById('header-sub').textContent = tripData.dest;
+    const badge = document.getElementById('mode-badge');
+    badge.textContent = isPlanner ? 'Planner' : 'Viewer';
+    badge.className = 'mode-badge' + (isPlanner ? '' : ' viewer');
+    document.getElementById('ov-dest').textContent = tripData.dest;
+    document.getElementById('ov-dates').textContent = formatDateShort(tripData.start) + ' – ' + formatDateShort(tripData.end);
+    const dur = Math.round((new Date(toDateStr(tripData.end) + 'T00:00:00') - new Date(toDateStr(tripData.start) + 'T00:00:00')) / 86400000) + 1;
+    document.getElementById('ov-duration').textContent = dur + ' day' + (dur !== 1 ? 's' : '');
+    document.getElementById('add-stay-wrap').style.display = isPlanner ? '' : 'none';
+    document.getElementById('add-vote-wrap').style.display = isPlanner ? '' : 'none';
+    document.getElementById('viewer-note-itin').style.display = isPlanner ? 'none' : 'block';
+    document.getElementById('viewer-note-votes').style.display = isPlanner ? 'none' : 'block';
+    renderCountdown(); renderStays(); renderItinerary(); renderVotes(); renderCounts(); renderShare(); renderRsvp(); renderExpenses();
+  }
+
+  function renderCounts() {
+    document.getElementById('ov-count-act').textContent = (tripData.activities||[]).filter(a=>a.type!=='food').length;
+    document.getElementById('ov-count-food').textContent = (tripData.activities||[]).filter(a=>a.type==='food').length;
+    document.getElementById('ov-count-votes').textContent = (tripData.votes||[]).length;
+    document.getElementById('ov-count-going').textContent = (tripData.rsvps||[]).filter(r=>r.status==='going').length;
+  }
+
+  function renderStays() {
+    const list = document.getElementById('stays-list');
+    const stays = tripData.stays || [];
+    if (!stays.length) { list.innerHTML = '<p style="font-size:13px;color:var(--text3);margin-bottom:8px">No accommodations yet.</p>'; return; }
+    list.innerHTML = stays.map(s => `
+      <div class="stay-card">
+        <h3>${s.name}</h3>
+        <div class="stay-meta">
+          <span>Check-in ${formatDateShort(s.checkin)}</span>
+          <span>Check-out ${formatDateShort(s.checkout)}</span>
+          ${s.address ? `<span>${s.address}</span>` : ''}
+        </div>
+        ${s.confirmation ? `<div class="stay-conf">Confirmation: ${s.confirmation}</div>` : ''}
+        ${isPlanner ? `<button class="delete-btn" style="position:absolute;top:12px;right:12px" onclick="deleteStay('${s.id}')">×</button>` : ''}
+      </div>`).join('');
+  }
+
+  function renderItinerary() {
+    const days = getDays();
+    const container = document.getElementById('days-container');
+    if (!days.length) { container.innerHTML = '<div class="empty-state"><div class="icon">📅</div>Set trip dates to see the itinerary.</div>'; return; }
+    container.innerHTML = days.map((day, di) => {
+      const acts = (tripData.activities||[]).filter(a => toDateStr(a.day) === day)
+        .sort((a,b) => (a.time||'99:99').localeCompare(b.time||'99:99'));
+      const actHtml = !acts.length
+        ? `<p style="font-size:13px;color:var(--text3);padding:6px 0">Nothing planned yet.</p>`
+        : acts.map(a => `
+          <div class="activity-item">
+            <div class="activity-type-dot type-${a.type}"></div>
+            <div class="activity-time">${a.time || '—'}</div>
+            <div class="activity-body">
+              <div class="activity-name">${a.name}</div>
+              ${a.note ? `<div class="activity-note">${a.note}</div>` : ''}
+            </div>
+            ${isPlanner ? `<button class="delete-btn" onclick="deleteActivity('${a.id}')">×</button>` : ''}
+          </div>`).join('');
+      return `
+        <div class="day-block">
+          <div class="day-header">
+            <div><div class="day-label">Day ${di+1}</div><div class="day-date">${formatDate(day)}</div></div>
+            ${isPlanner ? `<button class="add-activity-btn" onclick="openActivityModal('${day}')">+ Add</button>` : ''}
+          </div>
+          ${actHtml}
+        </div>`;
+    }).join('');
+  }
+
+  function getMyVotes() {
+    try { return JSON.parse(localStorage.getItem('votes_' + tripId) || '{}'); } catch { return {}; }
+  }
+  function saveMyVote(voteId, type) {
+    const v = getMyVotes(); v[voteId] = type;
+    localStorage.setItem('votes_' + tripId, JSON.stringify(v));
+  }
+
+  function renderVotes() {
+    const list = document.getElementById('votes-list');
+    const votes = tripData.votes || [];
+    if (!votes.length) { list.innerHTML = '<div class="empty-state"><div class="icon">🗳</div>No vote options yet.</div>'; return; }
+    const myVotes = getMyVotes();
+    list.innerHTML = votes.map(v => {
+      const total = (v.yes_count||0) + (v.no_count||0);
+      const pct = total > 0 ? Math.round((v.yes_count||0)/total*100) : 0;
+      const myPick = myVotes[v.id]; // 'yes', 'no', or undefined
+      const voted = !!myPick;
+      return `
+        <div class="vote-card">
+          <div class="vote-header">
+            <div><div class="vote-title">${v.title}</div><div class="vote-category">${v.category}</div></div>
+            ${isPlanner ? `<button class="delete-btn" onclick="deleteVote('${v.id}')">×</button>` : ''}
+          </div>
+          ${v.note ? `<div class="vote-note">${v.note}</div>` : ''}
+          <div class="vote-bar-wrap">
+            <div class="vote-bar-label"><span>Yes</span><span>${v.yes_count||0} vote${(v.yes_count||0)!==1?'s':''}</span></div>
+            <div class="vote-bar-track"><div class="vote-bar-fill" style="width:${pct}%"></div></div>
+          </div>
+          <div class="vote-actions">
+            <button class="vote-btn yes ${myPick==='yes'?'picked':''}" onclick="castVote('${v.id}','yes')" ${voted?'disabled':''}>Yes, let's go!</button>
+            <button class="vote-btn no ${myPick==='no'?'picked':''}" onclick="castVote('${v.id}','no')" ${voted?'disabled':''}>Skip</button>
+            ${voted ? `<button class="vote-btn" onclick="changeVote('${v.id}')">Change vote</button>` : ''}
+          </div>
+          <div class="vote-total">${voted ? `You voted · ` : ''}${total} vote${total!==1?'s':''} total</div>
+        </div>`;
+    }).join('');
+  }
+
+  function renderShare() {
+    const url = `${window.location.origin}?trip=${tripId}`;
+    document.getElementById('share-link-display').textContent = url;
+    document.getElementById('trip-id-display').textContent = tripId;
+  }
+
+  function copyLink() {
+    const url = `${window.location.origin}?trip=${tripId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      const t = document.getElementById('copied-toast');
+      t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500);
+    });
+  }
+
+  // ── Activity modal ─────────────────────────────────────────────────────────
+  function openActivityModal(day) {
+    const days = getDays();
+    const sel = document.getElementById('act-day');
+    sel.innerHTML = days.map(d => `<option value="${d}" ${d===day?'selected':''}>${formatDate(d)}</option>`).join('');
+    ['act-name','act-time','act-note'].forEach(id => document.getElementById(id).value = '');
+    openModal('activity-modal');
+  }
+
+  async function saveActivity() {
+    const name = document.getElementById('act-name').value.trim();
+    if (!name) { showToast('Please enter a name.'); return; }
+    const btn = document.getElementById('save-act-btn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await api('POST', '/trip/'+tripId+'/activities', {
+        pin: plannerPin,
+        day: document.getElementById('act-day').value,
+        name,
+        type: document.getElementById('act-type').value,
+        time: document.getElementById('act-time').value,
+        note: document.getElementById('act-note').value.trim()
+      });
+      tripData = await api('GET', '/trip/'+tripId);
+      closeModal('activity-modal');
+      renderItinerary(); renderCounts();
+    } catch(e) { showToast(e.message); }
+    btn.disabled = false; btn.textContent = 'Add';
+  }
+
+  async function deleteActivity(id) {
+    if (!confirm('Remove this activity?')) return;
+    await api('DELETE', '/trip/'+tripId+'/activities/'+id, { pin: plannerPin });
+    tripData = await api('GET', '/trip/'+tripId);
+    renderItinerary(); renderCounts();
+  }
+
+  // ── Stay modal ─────────────────────────────────────────────────────────────
+  async function saveStay() {
+    const name = document.getElementById('stay-name').value.trim();
+    if (!name) { showToast('Please enter the property name.'); return; }
+    const btn = document.getElementById('save-stay-btn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await api('POST', '/trip/'+tripId+'/stays', {
+        pin: plannerPin,
+        name,
+        checkin: document.getElementById('stay-checkin').value,
+        checkout: document.getElementById('stay-checkout').value,
+        address: document.getElementById('stay-address').value.trim(),
+        confirmation: document.getElementById('stay-conf').value.trim()
+      });
+      tripData = await api('GET', '/trip/'+tripId);
+      closeModal('stay-modal');
+      renderStays();
+    } catch(e) { showToast(e.message); }
+    btn.disabled = false; btn.textContent = 'Add';
+  }
+
+  async function deleteStay(id) {
+    if (!confirm('Remove this accommodation?')) return;
+    await api('DELETE', '/trip/'+tripId+'/stays/'+id, { pin: plannerPin });
+    tripData = await api('GET', '/trip/'+tripId);
+    renderStays();
+  }
+
+  // ── Vote modal ─────────────────────────────────────────────────────────────
+  async function saveVote() {
+    const title = document.getElementById('vote-title').value.trim();
+    if (!title) { showToast('Please enter a title.'); return; }
+    const btn = document.getElementById('save-vote-btn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await api('POST', '/trip/'+tripId+'/votes', {
+        pin: plannerPin,
+        title,
+        category: document.getElementById('vote-cat').value,
+        note: document.getElementById('vote-note').value.trim()
+      });
+      tripData = await api('GET', '/trip/'+tripId);
+      closeModal('vote-modal');
+      renderVotes(); renderCounts();
+    } catch(e) { showToast(e.message); }
+    btn.disabled = false; btn.textContent = 'Add';
+  }
+
+  async function castVote(id, type) {
+    const prev = getMyVotes()[id];
+    try {
+      await api('POST', '/trip/'+tripId+'/votes/'+id+'/cast', { type, prev });
+      saveMyVote(id, type);
+      tripData = await api('GET', '/trip/'+tripId);
+      renderVotes();
+    } catch(e) { showToast('Vote failed.'); }
+  }
+
+  function changeVote(id) {
+    const myVotes = getMyVotes();
+    delete myVotes[id];
+    localStorage.setItem('votes_' + tripId, JSON.stringify(myVotes));
+    renderVotes();
+  }
+
+  async function deleteVote(id) {
+    if (!confirm('Remove this vote option?')) return;
+    await api('DELETE', '/trip/'+tripId+'/votes/'+id, { pin: plannerPin });
+    tripData = await api('GET', '/trip/'+tripId);
+    renderVotes(); renderCounts();
+  }
+
+  // ── Countdown ──────────────────────────────────────────────────────────────
+  function renderCountdown() {
+    const el = document.getElementById('ov-countdown');
+    const start = new Date(toDateStr(tripData.start) + 'T00:00:00');
+    const end = new Date(toDateStr(tripData.end) + 'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    const diff = Math.round((start - today) / 86400000);
+    if (diff > 0) {
+      el.innerHTML = `<div class="countdown-card"><div><div class="countdown-num">${diff}</div><div class="countdown-label">day${diff!==1?'s':''} to go</div></div><div class="countdown-dest">${tripData.dest}</div></div>`;
+    } else if (diff === 0) {
+      el.innerHTML = `<div class="countdown-card"><div><div class="countdown-num" style="font-size:28px">Today!</div><div class="countdown-label">The trip starts today</div></div><div class="countdown-dest">${tripData.dest}</div></div>`;
+    } else if (today <= end) {
+      el.innerHTML = `<div class="countdown-card"><div><div class="countdown-num" style="font-size:28px">Ongoing</div><div class="countdown-label">Trip in progress</div></div><div class="countdown-dest">${tripData.dest}</div></div>`;
+    } else {
+      el.innerHTML = '';
+    }
+  }
+
+  // ── RSVP ───────────────────────────────────────────────────────────────────
+  function getMyRsvpId() { return localStorage.getItem('rsvp_' + tripId); }
+
+  function renderRsvp() {
+    const rsvps = tripData.rsvps || [];
+    const myId = getMyRsvpId();
+    const hasRsvpd = rsvps.some(r => r.id === myId);
+    document.getElementById('rsvp-join-btn').style.display = hasRsvpd ? 'none' : '';
+
+    const labels = { going: 'Going', maybe: 'Maybe', cant: "Can't make it" };
+    const list = document.getElementById('rsvp-list');
+    if (!rsvps.length) {
+      list.innerHTML = '<p style="font-size:13px;color:var(--text3);margin-bottom:8px">No one has RSVPed yet. Be first!</p>';
+      return;
+    }
+    list.innerHTML = `<div class="rsvp-chips">${rsvps.map(r => `
+      <div class="rsvp-chip ${r.status}">
+        ${r.name} · ${labels[r.status]||r.status}
+        ${isPlanner ? `<button class="chip-del" onclick="deleteRsvp('${r.id}')">×</button>` : ''}
+      </div>`).join('')}</div>`;
+  }
+
+  async function saveRsvp() {
+    const name = document.getElementById('rsvp-name').value.trim();
+    if (!name) { showToast('Please enter your name.'); return; }
+    const status = document.getElementById('rsvp-status').value;
+    const btn = document.getElementById('save-rsvp-btn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      const r = await api('POST', '/trip/'+tripId+'/rsvp', { name, status });
+      localStorage.setItem('rsvp_' + tripId, r.id);
+      tripData = await api('GET', '/trip/'+tripId);
+      closeModal('rsvp-modal');
+      document.getElementById('rsvp-name').value = '';
+      renderRsvp(); renderCounts(); renderExpenses();
+    } catch(e) { showToast(e.message); }
+    btn.disabled = false; btn.textContent = 'Add';
+  }
+
+  async function deleteRsvp(id) {
+    if (!confirm('Remove this person?')) return;
+    await api('DELETE', '/trip/'+tripId+'/rsvp/'+id, { pin: plannerPin });
+    if (getMyRsvpId() === id) localStorage.removeItem('rsvp_' + tripId);
+    tripData = await api('GET', '/trip/'+tripId);
+    renderRsvp(); renderCounts(); renderExpenses();
+  }
+
+  // ── Expenses ───────────────────────────────────────────────────────────────
+  function openExpenseModal() {
+    const going = (tripData.rsvps || []).filter(r => r.status === 'going');
+    const container = document.getElementById('exp-split-container');
+    if (going.length) {
+      container.innerHTML = going.map(r => `
+        <label class="exp-checkbox-label">
+          <input type="checkbox" value="${r.name}" checked />
+          ${r.name}
+        </label>`).join('');
+    } else {
+      container.innerHTML = '<p style="font-size:13px;color:var(--text3)">No RSVPs yet — add people first to track splits.</p>';
+    }
+    // Update datalist
+    const dl = document.getElementById('rsvp-names-list');
+    if (dl) dl.innerHTML = (tripData.rsvps||[]).map(r=>`<option value="${r.name}">`).join('');
+    openModal('expense-modal');
+  }
+
+  function renderExpenses() {
+    const expenses = tripData.expenses || [];
+    const total = expenses.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const settledTotal = expenses.filter(e => e.settled).reduce((s, e) => s + parseFloat(e.amount), 0);
+    const outstanding = total - settledTotal;
+
+    const summaryEl = document.getElementById('expenses-summary');
+    if (!expenses.length) {
+      summaryEl.innerHTML = '<div class="empty-state" style="padding:1.5rem 0"><div class="icon">💸</div>No expenses logged yet.</div>';
+    } else {
+      summaryEl.innerHTML = `
+        <div class="expense-summary">
+          <div class="expense-summary-row">
+            <div class="expense-stat"><div class="lbl">Total</div><div class="val">$${total.toFixed(2)}</div></div>
+            <div class="expense-stat"><div class="lbl">Outstanding</div><div class="val" style="color:var(--accent)">$${outstanding.toFixed(2)}</div></div>
+            <div class="expense-stat"><div class="lbl">Settled</div><div class="val" style="color:var(--teal)">$${settledTotal.toFixed(2)}</div></div>
+          </div>
+        </div>`;
+    }
+
+    const listEl = document.getElementById('expenses-list');
+    if (!expenses.length) { listEl.innerHTML = ''; return; }
+    listEl.innerHTML = expenses.map(e => {
+      const splits = Array.isArray(e.split_with) ? e.split_with : [];
+      const perPerson = splits.length > 0 ? (parseFloat(e.amount) / splits.length).toFixed(2) : null;
+      return `
+        <div class="expense-item ${e.settled ? 'settled' : ''}">
+          <div class="expense-item-left">
+            <div class="expense-item-desc">${e.description}</div>
+            <div class="expense-item-meta">Paid by ${e.paid_by}${perPerson ? ` · $${perPerson}/person` : ''}</div>
+            ${splits.length ? `<div class="split-chips">${splits.map(n=>`<span class="split-chip">${n}</span>`).join('')}</div>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+            <div class="expense-item-amount">$${parseFloat(e.amount).toFixed(2)}</div>
+            <button class="settle-btn ${e.settled?'settled':''}" onclick="settleExpense('${e.id}')">${e.settled ? 'Settled ✓' : 'Mark settled'}</button>
+            ${isPlanner ? `<button class="delete-btn" onclick="deleteExpense('${e.id}')">×</button>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function saveExpense() {
+    const description = document.getElementById('exp-desc').value.trim();
+    const amount = document.getElementById('exp-amount').value;
+    const paid_by = document.getElementById('exp-paidby').value.trim();
+    if (!description || !amount || !paid_by) { showToast('Please fill in all fields.'); return; }
+    const split_with = [...document.querySelectorAll('#exp-split-container input[type=checkbox]:checked')].map(cb => cb.value);
+    const btn = document.getElementById('save-exp-btn');
+    btn.disabled = true; btn.textContent = 'Saving...';
+    try {
+      await api('POST', '/trip/'+tripId+'/expenses', { description, amount: parseFloat(amount), paid_by, split_with });
+      tripData = await api('GET', '/trip/'+tripId);
+      closeModal('expense-modal');
+      ['exp-desc','exp-amount','exp-paidby'].forEach(id => document.getElementById(id).value = '');
+      renderExpenses();
+    } catch(e) { showToast(e.message); }
+    btn.disabled = false; btn.textContent = 'Add';
+  }
+
+  async function settleExpense(id) {
+    try {
+      const opts = { method: 'PATCH', headers: { 'Content-Type': 'application/json' } };
+      const res = await fetch('/api/trip/'+tripId+'/expenses/'+id+'/settle', opts);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      tripData = await api('GET', '/trip/'+tripId);
+      renderExpenses();
+    } catch(e) { showToast('Could not update expense.'); }
+  }
+
+  async function deleteExpense(id) {
+    if (!confirm('Remove this expense?')) return;
+    await api('DELETE', '/trip/'+tripId+'/expenses/'+id, { pin: plannerPin });
+    tripData = await api('GET', '/trip/'+tripId);
+    renderExpenses();
+  }
+
+  // ── Init: check URL for ?trip=ID ──────────────────────────────────────────
+  (async function init() {
+    const params = new URLSearchParams(window.location.search);
+    const urlTripId = params.get('trip');
+    const savedId = localStorage.getItem('last_trip_id');
+    const id = urlTripId || savedId;
+
+    if (id && !tripId) {
+      // tripId is already set if we just created a trip in this session — skip unlock
+      try {
+        tripId = id;
+        tripData = await api('GET', '/trip/'+tripId);
+        document.getElementById('unlock-trip-name').textContent = tripData.name;
+        showScreen('unlock-screen');
+      } catch(e) {
+        localStorage.removeItem('last_trip_id');
+      }
+    }
+  })();
+</script>
+</body>
+</html>
