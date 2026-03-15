@@ -409,6 +409,18 @@
   </div>
 </div>
 
+<!-- SAVE LINK MODAL -->
+<div class="modal-overlay" id="save-link-modal">
+  <div class="modal" style="text-align:center">
+    <div style="font-size:32px;margin-bottom:12px">🎉</div>
+    <h2 style="margin-bottom:6px">Your trip is ready!</h2>
+    <p style="font-size:14px;color:var(--text2);margin-bottom:1.5rem">Save this link — it's the only way to get back to your planner from another device.</p>
+    <div class="share-link-box" id="save-link-display" onclick="copySaveLink()" style="text-align:left;margin-bottom:6px"></div>
+    <div class="copied-toast" id="save-copied-toast" style="text-align:center">Link copied!</div>
+    <button class="btn-primary" style="margin-top:1.25rem" onclick="dismissSaveLinkModal()">Got it, open my planner</button>
+  </div>
+</div>
+
 <!-- RSVP MODAL -->
 <div class="modal-overlay" id="rsvp-modal">
   <div class="modal">
@@ -533,7 +545,9 @@
       plannerPin = pin;
       isPlanner = true;
       localStorage.setItem('last_trip_id', tripId);
-      await fetchAndLaunch();
+      const url = `${window.location.origin}?trip=${tripId}`;
+      document.getElementById('save-link-display').textContent = url;
+      document.getElementById('save-link-modal').classList.add('show');
     } catch(e) {
       showToast(e.message);
       btn.disabled = false; btn.textContent = 'Create trip planner';
@@ -703,6 +717,19 @@
     const url = `${window.location.origin}?trip=${tripId}`;
     document.getElementById('share-link-display').textContent = url;
     document.getElementById('trip-id-display').textContent = tripId;
+  }
+
+  function copySaveLink() {
+    const url = `${window.location.origin}?trip=${tripId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      const t = document.getElementById('save-copied-toast');
+      t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500);
+    });
+  }
+
+  async function dismissSaveLinkModal() {
+    document.getElementById('save-link-modal').classList.remove('show');
+    await fetchAndLaunch();
   }
 
   function copyLink() {
